@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "refs-master-kg"
+version = "0.1.0"
+description = "Real Estate Finance System Master Knowledge Graph"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "lxml>=5.4",
+    "openpyxl>=3.1",
+    "pyshacl>=0.30",
+    "rdflib>=7.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=25.1",
+    "mypy>=1.15",
+    "pytest>=8.3",
+    "pytest-bdd>=8.1",
+    "ruff>=0.11",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
