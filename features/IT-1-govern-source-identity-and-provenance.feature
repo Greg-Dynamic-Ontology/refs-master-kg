@@ -44,10 +44,13 @@ Feature: Govern source identity and provenance
   Rule: A governed source artifact retains its provenance
 
     @IT-1R2S1
-    Scenario: Identify the publisher of a governed source artifact
-      Given a governed source artifact published by an authoritative organization
-      When the artifact is admitted as REFS source evidence
-      Then its provenance identifies the publisher
+    Scenario: Preserve the publisher boundary
+      Given Fannie Mae publishes a constraint
+        And Freddie Mac publishes an equivalent constraint
+        When REFS represents their shared requirement as a GSE constraint
+        Then the Fannie Mae source constraint remains identifiable
+        And the Freddie Mac source constraint remains identifiable
+        And the GSE constraint retains a link to each source constraint
 
     @IT-1R2S2
     Scenario: Preserve the publisher boundary
