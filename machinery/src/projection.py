@@ -1,11 +1,12 @@
-"""Identify source and target projections for IT-2R1S1."""
+"""Identify projection endpoints and preserve governed values."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
 class Projection:
     identity: str
+    governed_value: str | None = None
 
 
 @dataclass(frozen=True)
@@ -15,4 +16,5 @@ class ProjectsTo:
 
 
 def projects_to(*, source: Projection, target: Projection) -> ProjectsTo:
-    return ProjectsTo(source_projection=source, target_projection=target)
+    projected_target = replace(target, governed_value=source.governed_value)
+    return ProjectsTo(source_projection=source, target_projection=projected_target)
