@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Synthetic XML test fixture covering all eight value kinds; not a complete UAD document. -->
+<test-data>
+  <PROPERTY ValuationUseType="SalesComparable">
+    <ADDRESS>
+      <AddressUnitIdentifier>1</AddressUnitIdentifier>
+      <CityName>Surfside</CityName>
+      <StateCode>HI</StateCode>
+    </ADDRESS>
+    <COMPARABLE>
+      <COMPARABLE_DETAIL>
+        <NoFinancingTransactionIndicator>false</NoFinancingTransactionIndicator>
+        <ProximityToSubjectDistanceLinearMeasure LinearUnitOfMeasureType="Miles">1.1</ProximityToSubjectDistanceLinearMeasure>
+      </COMPARABLE_DETAIL>
+    </COMPARABLE>
+    <SALES_HISTORIES>
+      <SALES_HISTORY>
+        <OwnershipTransferDate>2019-04-30</OwnershipTransferDate>
+        <OwnershipTransferTransactionAmount>279000</OwnershipTransferTransactionAmount>
+      </SALES_HISTORY>
+      <!-- Added synthetic record to exercise repeated values and date/amount association. -->
+      <SALES_HISTORY>
+        <OwnershipTransferDate>2017-06-15</OwnershipTransferDate>
+        <OwnershipTransferTransactionAmount>250000</OwnershipTransferTransactionAmount>
+      </SALES_HISTORY>
+    </SALES_HISTORIES>
+  </PROPERTY>
+</test-data>

@@ -1,0 +1,92 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix fx:   <urn:refs:fixture-vocabulary:> .
+@prefix data: <urn:refs:fixture:data-test-ir2rs2:> .
+
+# RDF representation of the supplied synthetic, unnamespaced XML fixture.
+# fx: is a local fixture vocabulary, NOT an official MISMO or approved REFS ontology.
+# data: IRIs identify fixture records; they are not source-provided publication IDs.
+# XML container elements are represented by named relationships below.
+# sourcePath values are XPath expressions against the unnamespaced source XML.
+# Each record retains its source reference and location. Source order is recorded
+# explicitly for repeated sales histories; RDF triple order has no significance.
+# No publisher, currency, or geographic equivalence is inferred.
+
+data:source a prov:Entity ;
+    rdfs:label "data-test-ir2rs2.xml — synthetic XML test fixture" ;
+    fx:fileName "data-test-ir2rs2.xml" ;
+    fx:synthetic true .
+
+data:projection a prov:Entity ;
+    rdfs:label "RDF projection of data-test-ir2rs2.xml" ;
+    prov:wasDerivedFrom data:source ;
+    fx:property data:property-1 .
+
+data:property-1 a fx:Property ;
+    prov:wasDerivedFrom data:source ;
+    fx:sourcePath "/test-data/PROPERTY[1]" ;
+    fx:valuationUseType fx:SalesComparable ;
+    fx:address data:address-1 ;
+    fx:comparableDetail data:comparable-detail-1 ;
+    fx:salesHistory data:sales-history-1, data:sales-history-2 .
+
+data:address-1 a fx:Address ;
+    prov:wasDerivedFrom data:source ;
+    fx:sourcePath "/test-data/PROPERTY[1]/ADDRESS[1]" ;
+    fx:addressUnitIdentifier "1"^^xsd:string ;
+    fx:cityName "Surfside"^^xsd:string ;
+    fx:stateCode fx:StateCode-HI .
+
+data:comparable-detail-1 a fx:ComparableDetail ;
+    prov:wasDerivedFrom data:source ;
+    fx:sourcePath "/test-data/PROPERTY[1]/COMPARABLE[1]/COMPARABLE_DETAIL[1]" ;
+    fx:noFinancingTransactionIndicator false ;
+    fx:proximityToSubjectDistance data:distance-1 .
+
+data:distance-1 a fx:DecimalMeasurement ;
+    prov:wasDerivedFrom data:source ;
+    fx:sourcePath "/test-data/PROPERTY[1]/COMPARABLE[1]/COMPARABLE_DETAIL[1]/ProximityToSubjectDistanceLinearMeasure[1]" ;
+    rdf:value "1.1"^^xsd:decimal ;
+    fx:linearUnitOfMeasureType fx:Miles .
+
+data:sales-history-1 a fx:SalesHistory ;
+    prov:wasDerivedFrom data:source ;
+    fx:sourcePath "/test-data/PROPERTY[1]/SALES_HISTORIES[1]/SALES_HISTORY[1]" ;
+    fx:sourcePosition 1 ;
+    fx:ownershipTransferDate "2019-04-30"^^xsd:date ;
+    fx:ownershipTransferTransactionAmount "279000"^^xsd:decimal .
+
+data:sales-history-2 a fx:SalesHistory ;
+    prov:wasDerivedFrom data:source ;
+    fx:sourcePath "/test-data/PROPERTY[1]/SALES_HISTORIES[1]/SALES_HISTORY[2]" ;
+    fx:sourcePosition 2 ;
+    fx:ownershipTransferDate "2017-06-15"^^xsd:date ;
+    fx:ownershipTransferTransactionAmount "250000"^^xsd:decimal .
+
+# Preserve source enumeration tokens without asserting equivalence to an
+# external code system whose mapping has not been established for this fixture.
+fx:ValuationUseTypes a skos:ConceptScheme .
+fx:StateCodes a skos:ConceptScheme .
+fx:LinearUnits a skos:ConceptScheme .
+
+fx:SalesComparable a skos:Concept ;
+    skos:inScheme fx:ValuationUseTypes ;
+    skos:notation "SalesComparable" ;
+    skos:prefLabel "Sales comparable"@en .
+
+fx:StateCode-HI a skos:Concept ;
+    skos:inScheme fx:StateCodes ;
+    skos:notation "HI" .
+
+fx:Miles a skos:Concept ;
+    skos:inScheme fx:LinearUnits ;
+    skos:notation "Miles" ;
+    skos:prefLabel "Miles"@en .
+
+fx:ownershipTransferTransactionAmount a rdf:Property ;
+    rdfs:label "Ownership transfer transaction amount"@en ;
+    rdfs:range xsd:decimal ;
+    rdfs:comment "Monetary amount supplied by the XML; currency is not specified in the fixture."@en .
