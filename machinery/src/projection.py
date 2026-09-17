@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 
 from rdflib import BNode, Dataset, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import PROV, RDF
+from rdflib.plugins.sparql.processor import SPARQLProcessor, SPARQLResult
 
 
 @dataclass(frozen=True)
@@ -293,24 +294,188 @@ def _record_permitted_omissions(
     return record
 
 
-def projects_to(*, source: Projection, target: Projection) -> ProjectsTo:
+class PythonProjectionEngine:
+    """Execute governed mappings and rules through Python RDF traversal."""
+
+    def project(self, source, target, knowledge, vocabulary):
+        result = _apply_mapping_conventions(source, target, knowledge, vocabulary)
+        for link, rule_type, assertion_type in (
+            (vocabulary.hasDerivationRule, vocabulary.DerivationRule, vocabulary.DerivedAssertion),
+            (vocabulary.hasTransformationRule, vocabulary.TransformationRule,
+             vocabulary.TransformedAssertion),
+        ):
+            _apply_assertion_rules(
+                source, target, knowledge, vocabulary, result,
+                rule_link=link, rule_type=rule_type, assertion_type=assertion_type,
+            )
+        return result
+
+
+class SparqlProjectionEngine:
+    """Match governed mappings and rule premises with local SPARQL queries.
+
+    Source evidence and rule knowledge occupy separate query graphs. This engine
+    does not call the Python mapping or inference implementation. Capabilities
+    and omission governance remain shared checks outside either engine.
+    """
+
+    def project(self, source, target, knowledge, vocabulary):
+        result = Graph()
+        if target.knowledge is not None:
+            for prefix, namespace in target.knowledge.namespaces():
+                result.bind(prefix, namespace)
+            for triple in target.knowledge:
+                result.add(triple)
+
+        query_data = Dataset()
+        rules_id = URIRef("urn:refs:engine:query:rules")
+        facts_id = URIRef("urn:refs:engine:query:source")
+        for triple in knowledge:
+            query_data.graph(rules_id).add(triple)
+        if source.knowledge is not None:
+            facts = (
+                source.knowledge.default_graph
+                if isinstance(source.knowledge, Dataset) else source.knowledge
+            )
+            for triple in facts:
+                query_data.graph(facts_id).add(triple)
+
+        source_id, target_id = URIRef(source.identity), URIRef(target.identity)
+        bindings = {
+            "rules": rules_id, "facts": facts_id,
+            "source": source_id, "target": target_id,
+        }
+        namespaces = {"v": vocabulary, "rdf": RDF}
+
+        processor = SPARQLProcessor(query_data)
+
+        def query(text, *, initBindings, initNs):
+            # Dataset.query() in the installed RDFLib accesses the deprecated
+            # default_context while dispatching to this same processor.
+            return SPARQLResult(
+                processor.query(text, initBindings=initBindings, initNs=initNs)
+            )
+
+        # Validate selected declarations even when they have no matching facts.
+        mappings = query('''
+            SELECT DISTINCT ?convention ?mapping WHERE {
+                GRAPH ?rules {
+                    ?target v:usesConvention ?convention .
+                    ?convention v:hasMapping ?mapping .
+                }
+            }
+        ''', initBindings=bindings, initNs=namespaces)
+        for row in mappings:
+            for field in (vocabulary.sourcePredicate, vocabulary.targetPredicate):
+                values = set(knowledge.objects(row.mapping, field))
+                if len(values) != 1 or not isinstance(next(iter(values)), URIRef):
+                    raise ValueError(f"Mapping {row.mapping} requires one predicate IRI for {field}.")
+            if source.knowledge is not None:
+                for triple in knowledge.triples((row.mapping, None, None)):
+                    result.add(triple)
+
+        mapped = query('''
+            SELECT DISTINCT ?convention ?outputPredicate ?value WHERE {
+                GRAPH ?rules {
+                    ?target v:usesConvention ?convention .
+                    ?convention v:hasMapping ?mapping .
+                    ?mapping v:sourcePredicate ?inputPredicate ;
+                             v:targetPredicate ?outputPredicate .
+                }
+                GRAPH ?facts { ?source ?inputPredicate ?value . }
+            }
+        ''', initBindings=bindings, initNs=namespaces)
+        for row in mapped:
+            result.add((target_id, row.outputPredicate, row.value))
+            result.add((target_id, vocabulary.appliedConvention, row.convention))
+            result.add((target_id, vocabulary.usesConvention, row.convention))
+            for triple in knowledge.triples((row.convention, None, None)):
+                result.add(triple)
+
+        if source.knowledge is None:
+            return result
+        for link, rule_type, assertion_type in (
+            (vocabulary.hasDerivationRule, vocabulary.DerivationRule, vocabulary.DerivedAssertion),
+            (vocabulary.hasTransformationRule, vocabulary.TransformationRule,
+             vocabulary.TransformedAssertion),
+        ):
+            rule_bindings = {**bindings, "ruleLink": link}
+            selected = query('''
+                SELECT DISTINCT ?rule WHERE {
+                    GRAPH ?rules {
+                        ?target v:usesConvention ?convention ; v:usesPreferences ?preference .
+                        ?convention ?ruleLink ?rule .
+                        ?preference v:enablesRule ?rule .
+                    }
+                }
+            ''', initBindings=rule_bindings, initNs=namespaces)
+            for row in selected:
+                if (row.rule, RDF.type, rule_type) not in knowledge:
+                    raise ValueError(f"Selected rule {row.rule} must be declared as {rule_type}.")
+                for field in (vocabulary.premisePredicate, vocabulary.premiseObject,
+                              vocabulary.conclusionPredicate, vocabulary.conclusionObject):
+                    values = set(knowledge.objects(row.rule, field))
+                    if len(values) != 1:
+                        raise ValueError(f"Rule {row.rule} requires exactly one {field}.")
+                    if field in (vocabulary.premisePredicate, vocabulary.conclusionPredicate):
+                        if not isinstance(next(iter(values)), URIRef):
+                            raise ValueError(f"Rule {row.rule} predicates must be IRIs.")
+
+            matches = query('''
+                SELECT DISTINCT ?convention ?rule ?preference ?predicate ?object WHERE {
+                    GRAPH ?rules {
+                        ?target v:usesConvention ?convention ; v:usesPreferences ?preference .
+                        ?convention ?ruleLink ?rule .
+                        ?preference v:enablesRule ?rule .
+                        ?rule v:premisePredicate ?inputPredicate ;
+                              v:premiseObject ?inputObject ;
+                              v:conclusionPredicate ?predicate ;
+                              v:conclusionObject ?object .
+                    }
+                    GRAPH ?facts { ?source ?inputPredicate ?inputObject . }
+                }
+            ''', initBindings=rule_bindings, initNs=namespaces)
+            grouped = {}
+            for row in matches:
+                key = (row.convention, row.rule, row.predicate, row.object)
+                grouped.setdefault(key, set()).add(row.preference)
+            for (convention, rule, predicate, value), preferences in grouped.items():
+                result.add((target_id, predicate, value))
+                assertion, activity = BNode(), BNode()
+                for triple in (
+                    (assertion, RDF.type, RDF.Statement),
+                    (assertion, RDF.type, assertion_type),
+                    (assertion, RDF.subject, target_id),
+                    (assertion, RDF.predicate, predicate),
+                    (assertion, RDF.object, value),
+                    (assertion, PROV.wasDerivedFrom, source_id),
+                    (assertion, PROV.wasGeneratedBy, activity),
+                    (activity, RDF.type, PROV.Activity),
+                    (activity, PROV.used, source_id),
+                    (activity, PROV.used, rule),
+                    (target_id, vocabulary.appliedConvention, convention),
+                ):
+                    result.add(triple)
+                for preference in preferences:
+                    result.add((activity, PROV.used, preference))
+                for resource in {rule, convention, *preferences}:
+                    for triple in knowledge.triples((resource, None, None)):
+                        result.add(triple)
+        return result
+
+
+def projects_to(
+    *, source: Projection, target: Projection,
+    engine: PythonProjectionEngine | SparqlProjectionEngine | None = None,
+) -> ProjectsTo:
     checked = _check_target_capabilities(source, target)
     projected_knowledge = target.knowledge
     projection_record = Graph()
     if checked is not None:
         knowledge, vocabulary = checked
-        projected_knowledge = _apply_mapping_conventions(source, target, knowledge, vocabulary)
-        _apply_assertion_rules(
-            source, target, knowledge, vocabulary, projected_knowledge,
-            rule_link=vocabulary.hasDerivationRule,
-            rule_type=vocabulary.DerivationRule,
-            assertion_type=vocabulary.DerivedAssertion,
-        )
-        _apply_assertion_rules(
-            source, target, knowledge, vocabulary, projected_knowledge,
-            rule_link=vocabulary.hasTransformationRule,
-            rule_type=vocabulary.TransformationRule,
-            assertion_type=vocabulary.TransformedAssertion,
+        selected_engine = engine if engine is not None else PythonProjectionEngine()
+        projected_knowledge = selected_engine.project(
+            source, target, knowledge, vocabulary
         )
         projection_record = _record_permitted_omissions(
             source, target, knowledge, vocabulary, projected_knowledge
