@@ -1,0 +1,5 @@
+# Synthetic IT-2R6S1 target fixture; not a published UAD vocabulary or artifact.
+@prefix test: <urn:refs:test:IT-2R6S1:> .
+
+test:target a test:Loan ;
+    test:identifier "00042" .

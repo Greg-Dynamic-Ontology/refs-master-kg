@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from rdflib import BNode, Dataset, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import PROV, RDF
 from rdflib.plugins.sparql.processor import SPARQLProcessor, SPARQLResult
+from pyshacl import validate
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,45 @@ class ProjectsTo:
     source_projection: Projection | None = None
     target_projection: Projection | None = None
     projection_record: Graph | None = None
+
+
+@dataclass(frozen=True)
+class ProjectionAssessment:
+    accepted: bool
+    validation_report: Graph
+
+
+def evaluate_projection(*, target: Projection, expectations: Graph) -> ProjectionAssessment:
+    """Evaluate existing target knowledge against governed SHACL expectations.
+
+    Validation performs no inference or in-place changes to the target.
+    The returned RDF report retains any violated shapes and constraints.
+    """
+    if target.knowledge is None:
+        raise ValueError("Projection evaluation requires target RDF knowledge.")
+    if len(expectations) == 0:
+        raise ValueError("Projection evaluation requires governed expectations.")
+    # pySHACL adds system triples to its shapes graph even with inplace=False;
+    # that option protects the data graph, not the caller's expectations.
+    # Supply a separate shapes graph so governed expectations stay unchanged.
+    validation_shapes = Graph()
+    for prefix, namespace in expectations.namespaces():
+        validation_shapes.bind(prefix, namespace)
+    for triple in expectations:
+        validation_shapes.add(triple)
+    conforms, report, _ = validate(
+        data_graph=target.knowledge,
+        shacl_graph=validation_shapes,
+        inference="none",
+        inplace=False,
+        advanced=False,
+        abort_on_first=False,
+        allow_infos=False,
+        allow_warnings=False,
+    )
+    if not isinstance(report, Graph):
+        raise ValueError(f"Projection validation could not produce an RDF report: {report}")
+    return ProjectionAssessment(accepted=bool(conforms), validation_report=report)
 
 
 def _check_target_capabilities(

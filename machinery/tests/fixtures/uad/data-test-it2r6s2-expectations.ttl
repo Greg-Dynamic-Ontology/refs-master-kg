@@ -1,0 +1,18 @@
+@prefix test: <urn:refs:test:IT-2R6S2:> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+test:TargetExpectations a sh:NodeShape ;
+    sh:targetNode test:target ;
+    sh:property test:IdentifierExpectation, test:ClassificationExpectation .
+
+test:IdentifierExpectation a sh:PropertyShape ;
+    sh:path test:identifier ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string .
+
+test:ClassificationExpectation a sh:PropertyShape ;
+    sh:path rdf:type ;
+    sh:hasValue test:Loan .

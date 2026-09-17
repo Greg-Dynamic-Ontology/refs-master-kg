@@ -1,0 +1,211 @@
+{
+  "description": "Complete contract for supplied synthetic XML. No derived assertions authorized. Metadata retains the fixture's original name and IRI namespace.",
+  "namespace": "urn:refs:fixture-vocabulary:",
+  "data_namespace": "urn:refs:fixture:data-test-ir2rs2:",
+  "root": "test-data",
+  "source": "source",
+  "constants": [
+    [
+      "source",
+      "rdf:type",
+      {
+        "iri": "prov:Entity"
+      }
+    ],
+    [
+      "source",
+      "rdfs:label",
+      {
+        "text": "data-test-ir2rs2.xml — synthetic XML test fixture"
+      }
+    ],
+    [
+      "source",
+      "fx:fileName",
+      {
+        "text": "data-test-ir2rs2.xml"
+      }
+    ],
+    [
+      "source",
+      "fx:synthetic",
+      {
+        "text": "true",
+        "datatype": "boolean"
+      }
+    ],
+    [
+      "projection",
+      "rdf:type",
+      {
+        "iri": "prov:Entity"
+      }
+    ],
+    [
+      "projection",
+      "rdfs:label",
+      {
+        "text": "RDF projection of data-test-ir2rs2.xml"
+      }
+    ],
+    [
+      "projection",
+      "prov:wasDerivedFrom",
+      {
+        "iri": "data:source"
+      }
+    ],
+    [
+      "fx:ownershipTransferTransactionAmount",
+      "rdf:type",
+      {
+        "iri": "rdf:Property"
+      }
+    ],
+    [
+      "fx:ownershipTransferTransactionAmount",
+      "rdfs:label",
+      {
+        "text": "Ownership transfer transaction amount",
+        "language": "en"
+      }
+    ],
+    [
+      "fx:ownershipTransferTransactionAmount",
+      "rdfs:range",
+      {
+        "iri": "xsd:decimal"
+      }
+    ],
+    [
+      "fx:ownershipTransferTransactionAmount",
+      "rdfs:comment",
+      {
+        "text": "Monetary amount supplied by the XML; currency is not specified in the fixture.",
+        "language": "en"
+      }
+    ]
+  ],
+  "nodes": [
+    {
+      "select": "./PROPERTY",
+      "id": "property-{index}",
+      "class": "Property",
+      "root_link": [
+        "projection",
+        "property"
+      ],
+      "values": [
+        {
+          "select": "@ValuationUseType",
+          "predicate": "valuationUseType",
+          "concept": {
+            "prefix": "",
+            "scheme": "ValuationUseTypes",
+            "labels": {
+              "SalesComparable": "Sales comparable"
+            }
+          }
+        }
+      ],
+      "links": [
+        {
+          "select": "ADDRESS",
+          "predicate": "address"
+        },
+        {
+          "select": "COMPARABLE/COMPARABLE_DETAIL",
+          "predicate": "comparableDetail"
+        },
+        {
+          "select": "SALES_HISTORIES/SALES_HISTORY",
+          "predicate": "salesHistory"
+        }
+      ]
+    },
+    {
+      "select": "./PROPERTY/ADDRESS",
+      "id": "address-{index}",
+      "class": "Address",
+      "values": [
+        {
+          "select": "AddressUnitIdentifier",
+          "predicate": "addressUnitIdentifier",
+          "datatype": "string"
+        },
+        {
+          "select": "CityName",
+          "predicate": "cityName",
+          "datatype": "string"
+        },
+        {
+          "select": "StateCode",
+          "predicate": "stateCode",
+          "concept": {
+            "prefix": "StateCode-",
+            "scheme": "StateCodes"
+          }
+        }
+      ]
+    },
+    {
+      "select": "./PROPERTY/COMPARABLE/COMPARABLE_DETAIL",
+      "id": "comparable-detail-{index}",
+      "class": "ComparableDetail",
+      "values": [
+        {
+          "select": "NoFinancingTransactionIndicator",
+          "predicate": "noFinancingTransactionIndicator",
+          "datatype": "boolean"
+        }
+      ],
+      "links": [
+        {
+          "select": "ProximityToSubjectDistanceLinearMeasure",
+          "predicate": "proximityToSubjectDistance"
+        }
+      ]
+    },
+    {
+      "select": "./PROPERTY/COMPARABLE/COMPARABLE_DETAIL/ProximityToSubjectDistanceLinearMeasure",
+      "id": "distance-{index}",
+      "class": "DecimalMeasurement",
+      "values": [
+        {
+          "select": ".",
+          "predicate": "rdf:value",
+          "datatype": "decimal"
+        },
+        {
+          "select": "@LinearUnitOfMeasureType",
+          "predicate": "linearUnitOfMeasureType",
+          "concept": {
+            "prefix": "",
+            "scheme": "LinearUnits",
+            "labels": {
+              "Miles": "Miles"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "select": "./PROPERTY/SALES_HISTORIES/SALES_HISTORY",
+      "id": "sales-history-{index}",
+      "class": "SalesHistory",
+      "position": "sourcePosition",
+      "values": [
+        {
+          "select": "OwnershipTransferDate",
+          "predicate": "ownershipTransferDate",
+          "datatype": "date"
+        },
+        {
+          "select": "OwnershipTransferTransactionAmount",
+          "predicate": "ownershipTransferTransactionAmount",
+          "datatype": "decimal"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+# Synthetic nonconforming fixture: required identifier is missing.
+@prefix test: <urn:refs:test:IT-2R6S2:> .
+
+test:target a test:Loan .
